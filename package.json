@@ -1,0 +1,13 @@
+{
+  "name": "focus-guard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps you on one task: warns about off-task windows, then closes them.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0"
+  }
+}

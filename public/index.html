@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus Guard</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/icon.png">
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+    --accent: #2f5bea; --ok: #1f8a4c; --warn: #c27a00; --bad: #c8322b; --chip: #efeee9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --card: #1e1e1c; --ink: #f0efe9; --muted: #9c9a92; --line: #2f2e2b;
+      --accent: #7d9bff; --ok: #4cc27f; --warn: #f0b03a; --bad: #ff6b61; --chip: #2a2927;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { border-radius: 7px; }
+  .switch { display: flex; background: var(--chip); border-radius: 12px; padding: 4px; margin: -6px 0 18px; }
+  .switch a { flex: 1; text-align: center; padding: 8px 12px; border-radius: 9px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; }
+  .switch a[aria-current] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .switch a:not([aria-current]):hover { color: var(--ink); }
+  .pill { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+  .pill.live { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+  input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  .task { font-size: 22px; font-weight: 650; margin: 2px 0 14px; letter-spacing: -0.01em; }
+  .clock { font-variant-numeric: tabular-nums; font-size: 44px; font-weight: 700; letter-spacing: -0.02em; }
+  .bar { height: 6px; background: var(--chip); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width 1s linear; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .now { display: flex; gap: 14px; align-items: flex-start; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--muted); }
+  .dot.on-task { background: var(--ok); } .dot.off-task { background: var(--bad); } .dot.checking { background: var(--warn); }
+  .now .t { font-weight: 600; word-break: break-word; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { display: grid; grid-template-columns: 64px 74px 1fr auto; gap: 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .log li:first-child { border-top: 0; }
+  .tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  #today li { grid-template-columns: 64px 1fr auto; }
+  .tag.done { color: var(--ok); } .tag.not-done, .tag.quit { color: var(--bad); } .tag.pending { color: var(--warn); }
+  .tag.allowed { color: var(--ok); } .tag.flagged, .tag.warned { color: var(--warn); } .tag.closed { color: var(--bad); } .tag.session { color: var(--accent); }
+  .err { border-color: var(--bad); color: var(--bad); font-size: 13px; }
+  .hidden { display: none; }
+  h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  @media (max-width: 560px) {
+    .row, .stats { grid-template-columns: 1fr 1fr; }
+    .log li { grid-template-columns: 54px 1fr; }
+    .log li .tag { grid-column: 2; } .log li .what { grid-column: 1 / -1; } .log li .act { grid-column: 1 / -1; }
+    .clock { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand"><img src="/icon.png" alt="" width="30" height="30"><h1>Focus Guard</h1></div>
+    <span id="status" class="pill">Connecting…</span>
+  </header>
+  <nav class="switch hidden" id="switch" aria-label="Switch app">
+    <a aria-current="page" href="/">Focus Guard</a>
+    <a id="toWeek" href="#">Focus Week</a>
+  </nav>
+
+  <div id="error" class="card err hidden"></div>
+
+  <section id="setup" class="card hidden">
+    <h2>Start a focus session</h2>
+    <label for="task">What are you working on?</label>
+    <textarea id="task" placeholder="e.g. 15-213 malloc lab: writing and debugging my allocator in C"></textarea>
+    <div class="row">
+      <div><label for="hours">Hours</label><input id="hours" type="number" min="0" step="1" value="2"></div>
+      <div><label for="minutes">Minutes</label><input id="minutes" type="number" min="0" max="59" step="5" value="0"></div>
+      <div><label for="grace">Seconds to comply after a warning</label><input id="grace" type="number" min="5" max="300" value="20"></div>
+    </div>
+    <label for="allow">Always allowed (optional, comma-separated words or app names)</label>
+    <input id="allow" placeholder="e.g. spotify, gmail, claude">
+    <p class="muted">Be specific about the task — the checker uses it to judge every window and Google search you open.</p>
+    <button id="start">Start session</button>
+  </section>
+
+  <section id="live" class="hidden">
+    <div class="card">
+      <div class="muted">Working on</div>
+      <div class="task" id="liveTask"></div>
+      <div class="clock" id="clock">0:00:00</div>
+      <div class="muted" id="endsAt"></div>
+      <div class="bar"><div id="progress"></div></div>
+      <div style="margin-top:14px"><button id="finish">I finished</button></div>
+    </div>
+    <div class="card">
+      <h2>Right now</h2>
+      <div class="now">
+        <div class="dot" id="nowDot"></div>
+        <div>
+          <div class="t" id="nowTitle">—</div>
+          <div class="muted" id="nowInfo"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card stats">
+      <div class="stat"><b id="sChecks">0</b><span>windows checked</span></div>
+      <div class="stat"><b id="sWarn">0</b><span>warnings</span></div>
+      <div class="stat"><b id="sClose">0</b><span>closed</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Today</h2>
+    <ul class="log" id="today"><li class="muted">No sessions yet today.</li></ul>
+  </section>
+
+  <section class="card">
+    <h2>Activity</h2>
+    <ul class="log" id="log"><li class="muted">Nothing yet.</li></ul>
+  </section>
+
+  <section id="quit" class="card hidden">
+    <h2>End early</h2>
+    <p class="muted">To stop before the timer runs out, type <b>i am choosing to quit</b>.</p>
+    <div class="row" style="grid-template-columns: 1fr auto;">
+      <input id="phrase" autocomplete="off">
+      <button class="ghost" id="stop">End session</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hms = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
+const clock = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+let data = null, skew = 0, lastLog = "";
+
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) alert(j.error || "Something went wrong.");
+  return r.ok;
+}
+
+$("start").onclick = async () => {
+  if (await post("/api/start", { task: $("task").value, hours: $("hours").value, minutes: $("minutes").value, grace: $("grace").value, allow: $("allow").value })) refresh();
+};
+$("stop").onclick = async () => {
+  if (await post("/api/stop", { phrase: $("phrase").value })) { $("phrase").value = ""; refresh(); }
+};
+$("finish").onclick = async () => {
+  if (confirm("Mark this task as finished and end the session?") && await post("/api/finish", {})) refresh();
+};
+$("today").onclick = async (e) => {
+  const { id, outcome } = e.target.dataset || {};
+  if (id && await post("/api/outcome", { id, outcome })) { lastToday = ""; refresh(); }
+};
+let lastToday = "";
+const OUTCOME = { done: "Done", "not done": "Not done", quit: "Quit early", pending: "Did you finish?" };
+function renderToday(t) {
+  const sig = JSON.stringify(t);
+  if (sig === lastToday) return;
+  lastToday = sig;
+  const rows = (t?.sessions || []).slice().reverse();
+  $("today").innerHTML = rows.length ? rows.map((s) => `
+    <li>
+      <span class="muted">${clock(s.startedAt)}</span>
+      <span class="what"><b>${esc(s.task)}</b> <span class="tag ${s.outcome.replace(" ", "-")}">${OUTCOME[s.outcome] || esc(s.outcome)}</span><br>
+        <span class="muted">${s.focusedMin} of ${s.plannedMin} min focused · ${s.warnings} warnings · ${s.closes} closed</span></span>
+      <span class="act">${s.outcome === "done" ? `<button class="ghost small" data-id="${esc(s.id)}" data-outcome="not done">Not done</button>`
+        : `<button class="small" data-id="${esc(s.id)}" data-outcome="done">Done</button>${s.outcome === "pending" ? ` <button class="ghost small" data-id="${esc(s.id)}" data-outcome="not done">Not done</button>` : ""}`}</span>
+    </li>`).join("") : '<li class="muted">No sessions yet today.</li>';
+}
+$("log").onclick = async (e) => {
+  const key = e.target.dataset?.key;
+  if (key && await post("/api/allow", { key })) refresh();
+};
+
+function render() {
+  if (!data) return;
+  const s = data.session, now = Date.now() - skew;
+  // Focus Week can't be embedded (claude.ai forbids framing), so the switch opens it in this window.
+  $("switch").classList.toggle("hidden", !data.focusWeekUrl);
+  if (data.focusWeekUrl) $("toWeek").href = data.focusWeekUrl;
+  $("status").textContent = s ? `Monitoring · ${data.mode === "claude" ? "Claude checks" : "keyword checks"}` : "Idle";
+  $("status").className = "pill" + (s ? " live" : "");
+  $("setup").classList.toggle("hidden", !!s);
+  $("live").classList.toggle("hidden", !s);
+  $("quit").classList.toggle("hidden", !s);
+  const errs = [data.error, data.helper ? null : "Window watcher isn't running — restarting…"].filter(Boolean);
+  $("error").classList.toggle("hidden", !errs.length);
+  $("error").textContent = errs.join(" ");
+  document.title = s ? `Focus Guard · ${hms(s.endsAt - now)}` : "Focus Guard";
+
+  if (s) {
+    $("liveTask").textContent = s.task;
+    $("clock").textContent = hms(s.endsAt - now);
+    $("endsAt").textContent = `left · ends at ${clock(s.endsAt)} · ${s.grace}s to comply after a warning`;
+    $("progress").style.width = `${Math.min(100, ((now - s.startedAt) / (s.endsAt - s.startedAt)) * 100)}%`;
+    const c = data.current;
+    $("nowDot").className = "dot " + (c?.verdict || "");
+    $("nowTitle").textContent = c ? (c.cleanTitle || "(no title)") : "—";
+    const verdicts = { "on-task": "On task", "off-task": "Off task", checking: "Checking…", ignored: "Not checked (system app or always-allowed)", idle: "" };
+    $("nowInfo").textContent = c ? [c.process, verdicts[c.verdict], c.reason, c.countdown ? `closing in ${c.countdown}s` : ""].filter(Boolean).join(" · ") : "";
+    $("sChecks").textContent = data.stats.checks;
+    $("sWarn").textContent = data.stats.warnings;
+    $("sClose").textContent = data.stats.closes;
+  }
+
+  renderToday(data.today);
+  const sig = JSON.stringify(data.log.slice(0, 3)) + data.log.length;
+  if (sig !== lastLog) {
+    lastLog = sig;
+    $("log").innerHTML = data.log.length ? data.log.map((e) => `
+      <li>
+        <span class="muted">${clock(e.t)}</span>
+        <span class="tag ${e.kind}">${e.kind}</span>
+        <span class="what"><b>${esc(e.title)}</b>${e.process ? ` <span class="muted">· ${esc(e.process)}</span>` : ""}<br><span class="muted">${esc(e.reason)}</span></span>
+        <span class="act">${s && e.key && e.kind !== "allowed" ? `<button class="ghost small" data-key="${esc(e.key)}">Actually on-task</button>` : ""}</span>
+      </li>`).join("") : '<li class="muted">Nothing yet.</li>';
+  }
+}
+
+async function refresh() {
+  try {
+    data = await (await fetch("/api/state")).json();
+    skew = Date.now() - data.now;
+  } catch {
+    $("status").textContent = "Server not running";
+    $("status").className = "pill";
+  }
+  render();
+}
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>
