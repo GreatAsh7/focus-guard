@@ -4,3 +4,6 @@ state.json
 recaps/
 *.log
 *.log.err
+ios/build/
+ios/*.ipa
+ios/FocusGuard.xcodeproj/

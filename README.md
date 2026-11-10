@@ -66,3 +66,9 @@ requires typing `i am choosing to quit`.
 Each `recaps/*.json` file has `"synced": false` until something consumes it. A nightly job
 (e.g. a scheduled Claude task) can read unsynced files, tick off or add matching items in your
 planner, post a summary, and set `"synced": true`.
+
+## iPhone version
+
+[`ios/`](ios/README.md) has a phone version: per-app usage in the Lock Screen / Dynamic Island,
+blocking modes (No social media, No gaming, Work, Fun, Relax) and a schedule. It works with a free
+Apple ID via Shortcuts automations and SideStore.
