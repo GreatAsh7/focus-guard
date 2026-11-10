@@ -1,0 +1,36 @@
+# Builds the iPhone app on GitHub's Macs and uploads FocusGuard.ipa
+# (unsigned; SideStore signs it with your Apple ID when you install it).
+name: iPhone build
+
+on:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build FocusGuard.ipa
+        run: |
+          cd ios
+          xcodegen generate
+          set -o pipefail
+          xcodebuild -project FocusGuard.xcodeproj -scheme FocusGuard -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | grep -E "error:|warning: .*deprecated|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Build/Products/Release-iphoneos/FocusGuard.app
+          mkdir -p build/ipa/Payload
+          cp -R build/Build/Products/Release-iphoneos/FocusGuard.app build/ipa/Payload/
+          (cd build/ipa && zip -qr ../../FocusGuard.ipa Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FocusGuard-ipa
+          path: ios/FocusGuard.ipa
+          retention-days: 30
